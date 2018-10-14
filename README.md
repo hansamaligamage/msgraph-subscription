@@ -102,7 +102,8 @@ public async Task GenerateDocuments (List<InvoiceLine> lines, TraceWriter log)
         foreach(InvoiceLine line in lines)
         {
             int id = random.Next(10000);
-            context.InvoiceLines.Add(new InvoiceLine { Id = id, Invoice = line.Invoice, Item = line.Item, Amount = line.Amount, Price = line.Price, Qty = line.Qty });
+            context.InvoiceLines.Add(new InvoiceLine { Id = id, Invoice = line.Invoice, Item = line.Item,
+            Amount = line.Amount, Price = line.Price, Qty = line.Qty });
             var changeId = await context.SaveChangesAsync();
             log.Info("Invoice lines are added " + changeId);
         }
@@ -130,7 +131,8 @@ public static string GenerateInvoiceSummary (TraceWriter log)
 Send a invoice summary as a twilio message
 ```
 [FunctionName("InvoiceSummary")]
-public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)]HttpRequestMessage req, TraceWriter log)
+public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Function, "get", "post",
+Route = null)]HttpRequestMessage req, TraceWriter log)
 {
     log.Info($"C# Timer trigger function executed att: {DateTime.Now}");
     const string accountSid = ""; //Twilio API accountSid
