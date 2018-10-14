@@ -3,8 +3,7 @@ Subscribe to Outlook email box with invoices and save invoice lines in a CosmosD
 
 Used Visual Studio 2017 with .NET Core 2.0 version to develop the solution, You can go through this article and find about more details on Graph API, <a href="https://social.technet.microsoft.com/wiki/contents/articles/51599.net-core-building-function-app-with-microsoft-graph-api-and-azure-functions.aspx">.NET  Core: Building Function app with Microsoft Graph API and Azure Functions</a>
 
-Run method in Azure Function
-
+Subscribe to mail box and track changes
 ```
 [FunctionName("EmailTrigger")] 
 public static async Task Run([HttpTrigger(AuthorizationLevel.Function, "get", "post", 
@@ -24,8 +23,8 @@ public static async Task Run([HttpTrigger(AuthorizationLevel.Function, "get", "p
   return response; 
 }
 ```
-Process email box chanegs, email notification is parsed into an object for later use
 
+Process email box chanegs, email notification is parsed into an object for later use
 ```
 private static async Task ProcessWebhookNotificationsAsync(HttpRequestMessage req, TraceWriter log,
 Func> processSubscriptionNotification) 
@@ -64,7 +63,6 @@ Func> processSubscriptionNotification)
 ```
 
 Extract the required details in each email, subject & body parameters
-
 ```
 private static async Task CheckForSubscriptionChangesAsync(string resource, TraceWriter log) 
 { 
@@ -91,3 +89,61 @@ private static async Task CheckForSubscriptionChangesAsync(string resource, Trac
  return success; 
 }
 ```
+
+Connect to CosmosDB and create new documents using EFCore CosmosDB API
+```
+public async Task GenerateDocuments (List<InvoiceLine> lines, TraceWriter log)
+{
+    Random random = new Random();
+    using (var context = new InvoiceContext())
+    {
+        await context.Database.EnsureCreatedAsync();
+        log.Info("Database is available!");
+        foreach(InvoiceLine line in lines)
+        {
+            int id = random.Next(10000);
+            context.InvoiceLines.Add(new InvoiceLine { Id = id, Invoice = line.Invoice, Item = line.Item, Amount = line.Amount, Price = line.Price, Qty = line.Qty });
+            var changeId = await context.SaveChangesAsync();
+            log.Info("Invoice lines are added " + changeId);
+        }
+    }
+```
+
+Retrieve CosmosDB documents 
+```
+public static string GenerateInvoiceSummary (TraceWriter log)
+{
+    StringBuilder msg = new StringBuilder();
+    using (var context = new InvoiceContext())
+    {
+        var result = from line in context.InvoiceLines
+                     group line by line.Invoice into grp
+                     select new { Invoice = grp, Total = grp.Sum(s => s.Price) };
+        foreach (var r in result)
+            msg.Append(r.Invoice.Key + " : " + r.Total + " | ");
+    }
+    log.Info("Summary " + msg.ToString());
+    return msg.ToString();
+}
+```
+
+Send a invoice summary as a twilio message
+```
+[FunctionName("InvoiceSummary")]
+public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)]HttpRequestMessage req, TraceWriter log)
+{
+    log.Info($"C# Timer trigger function executed att: {DateTime.Now}");
+    const string accountSid = ""; //Twilio API accountSid
+    const string authToken = ""; //Twilio API auth token
+    var summary =  GenerateInvoiceSummary(log);
+    TwilioClient.Init(accountSid, authToken);
+    var message = MessageResource.Create(
+    body: summary,
+    from: new Twilio.Types.PhoneNumber(""), //Twilio API PhoneNo
+    to: new Twilio.Types.PhoneNumber("") //Your phone no
+    );
+    log.Info("Message Sent " + summary);
+    return new HttpResponseMessage();
+}
+```
+
