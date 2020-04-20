@@ -68,11 +68,13 @@ private static async Task CheckForSubscriptionChangesAsync(string resource, Trac
 { 
  bool success = false; 
  // Obtain an access token 
- string accessToken = System.Environment.GetEnvironmentVariable("AccessToken", EnvironmentVariableTarget.Process); 
+ string accessToken = System.Environment.GetEnvironmentVariable("AccessToken", 
+                                         EnvironmentVariableTarget.Process); 
  log.Info($"accessToken: {accessToken}"); 
  HttpClient client = new HttpClient(); 
  // Send Graph request to fetch mail 
- HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "https://graph.microsoft.com/v1.0/" + resource); 
+ HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, 
+                         "https://graph.microsoft.com/v1.0/" + resource); 
  request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);  
  HttpResponseMessage response = await client.SendAsync(request).ConfigureAwait(continueOnCapturedContext: false);  
  log.Info(response.ToString()); 
